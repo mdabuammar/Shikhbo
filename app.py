@@ -89,6 +89,12 @@ def chat_route():
     return render_template("chat.html")
 
 
+@app.route("/favicon.ico")
+@app.route("/favicon.png")
+def favicon():
+    return ("", 204)
+
+
 @app.route("/api/me", methods=["GET"])
 @login_required
 def get_me():
@@ -310,8 +316,10 @@ def query():
                             yield json.dumps({"chunk": str(payload)}) + "\n"
                         return
 
-                    for line in response.iter_lines(decode_unicode=True):
+                    for line in response.iter_lines():
                         if line:
+                            if isinstance(line, bytes):
+                                line = line.decode("utf-8", errors="ignore")
                             yield line + "\n"
             except Exception as e:
                 yield json.dumps({"chunk": f"\n[Error: {str(e)}]"}) + "\n"
