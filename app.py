@@ -95,6 +95,11 @@ def favicon():
     return ("", 204)
 
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok", "service": "shikhbo-vercel"})
+
+
 @app.route("/api/me", methods=["GET"])
 @login_required
 def get_me():
@@ -302,7 +307,7 @@ def query():
                     target_url,
                     json=user_json,
                     stream=True,
-                    timeout=(10, 120),
+                    timeout=(5, 30),
                 ) as response:
                     response.raise_for_status()
                     content_type = response.headers.get("content-type", "")
@@ -366,7 +371,7 @@ def transcribe_audio():
                     )
                 },
                 data={"lang": lang},
-                timeout=(10, 120),
+                timeout=(5, 30),
             )
             return Response(
                 response.content,
@@ -420,7 +425,7 @@ def extract_file():
                         uploaded_file.mimetype,
                     )
                 },
-                timeout=(10, 120),
+                timeout=(5, 30),
             )
             return Response(
                 response.content,
@@ -456,7 +461,7 @@ def extract_tts():
             response = requests.post(
                 target_url,
                 json={"text": text},
-                timeout=(10, 120),
+                timeout=(5, 30),
             )
             return Response(
                 response.content,
