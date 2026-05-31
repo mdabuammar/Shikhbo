@@ -2,7 +2,8 @@
 let currentSubject = 'ICT';
 let currentMode = 'normal';
 let currentQuality = 'fast';
-const TTS_ENABLED = false;
+const TTS_ENABLED = true;
+const BACKEND_TTS_ENABLED = false;
 
 let chatHistory = [];
 
@@ -266,9 +267,11 @@ async function sendQuery() {
                         fullBotResponse += parsed.chunk;
                         contentBox.textContent = fullBotResponse;
                     }
-                    if (parsed.sources && parsed.sources.length > 0) {
-                        // Create sources button dynamically
-                        appendSources(document.getElementById(msgDivId), parsed.sources);
+                    const sourceList = Array.isArray(parsed.sources)
+                        ? parsed.sources
+                        : (parsed.sources ? [parsed.sources] : []);
+                    if (sourceList.length > 0) {
+                        appendSources(document.getElementById(msgDivId), sourceList);
                     }
                 } catch (e) {
                     console.error("Stream parse error:", e, line);
@@ -465,14 +468,19 @@ async function toggleRecording() {
                             inputEl.value = (inputEl.value + " " + data.text).trim();
                             autoResize(inputEl);
                         } else if (data.error) {
-                            alert("Transcription error: " + data.error);
+                            appendMessage("Transcription error: " + data.error, 'bot', true);
                         }
                     } else {
-                        alert("Error contacting the audio endpoint.");
+                        let errorText = "Voice input is temporarily unavailable.";
+                        try {
+                            const data = await res.json();
+                            if (data.error) errorText = data.error;
+                        } catch (e) { }
+                        appendMessage(errorText, 'bot', true);
                     }
                 } catch (e) {
                     removeMessage(loadingId);
-                    alert("Network error: " + e.message);
+                    appendMessage("Voice input is temporarily unavailable.", 'bot', true);
                 }
             };
 
@@ -549,6 +557,39 @@ async function playBotAudio(textDiv, btnElement) {
     const text = textDiv.textContent.trim();
     if (!text) return;
 
+    if ('speechSynthesis' in window) {
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            document.querySelectorAll('.speech-btn').forEach(btn => {
+                btn.innerHTML = '🔊';
+                btn.dataset.playing = "false";
+            });
+            if (btnElement.dataset.playing === "true") return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        const langToUse = (typeof currentLang !== 'undefined') ? currentLang : 'bn';
+        utterance.lang = langToUse === 'bn' ? 'bn-BD' : 'en-US';
+        utterance.onend = () => {
+            btnElement.innerHTML = '🔊';
+            btnElement.dataset.playing = "false";
+        };
+        utterance.onerror = () => {
+            btnElement.innerHTML = '🔊';
+            btnElement.dataset.playing = "false";
+            showAudioStatus(btnElement, "Audio playback is not available in this browser.");
+        };
+        btnElement.innerHTML = '⏸️';
+        btnElement.dataset.playing = "true";
+        window.speechSynthesis.speak(utterance);
+        return;
+    }
+
+    if (!BACKEND_TTS_ENABLED) {
+        showAudioStatus(btnElement, "Audio playback is not available in this browser.");
+        return;
+    }
+
     // Check if something is playing right now
     if (currentTTSAudio) {
         currentTTSAudio.pause();
@@ -573,7 +614,7 @@ async function playBotAudio(textDiv, btnElement) {
         });
 
         if (!res.ok) {
-            alert('Failed to generate audio. Maybe the TTS model is missing.');
+            showAudioStatus(btnElement, "Audio playback is temporarily unavailable.");
             btnElement.innerHTML = '🔊';
             btnElement.dataset.playing = "false";
             return;
@@ -596,4 +637,19 @@ async function playBotAudio(textDiv, btnElement) {
         btnElement.innerHTML = '🔊';
         btnElement.dataset.playing = "false";
     }
+}
+
+function showAudioStatus(btnElement, text) {
+    const bubble = btnElement.closest('.msg-bubble');
+    if (!bubble) return;
+    const existing = bubble.querySelector('.audio-status');
+    if (existing) existing.remove();
+    const status = document.createElement('div');
+    status.classList.add('audio-status');
+    status.textContent = text;
+    status.style.marginTop = '6px';
+    status.style.fontSize = '0.85em';
+    status.style.color = 'var(--text-dim, #ccc)';
+    bubble.appendChild(status);
+    setTimeout(() => status.remove(), 3500);
 }
