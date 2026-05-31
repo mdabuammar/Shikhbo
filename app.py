@@ -78,7 +78,7 @@ def login_required(f):
 @app.route("/")
 def index():
     if "user" in session:
-        return redirect(url_for("chat"))
+        return redirect(url_for("chat_route"))
     return render_template("index.html")
 
 
