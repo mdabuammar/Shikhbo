@@ -2,6 +2,7 @@
 let currentSubject = 'ICT';
 let currentMode = 'normal';
 let currentQuality = 'fast';
+const TTS_ENABLED = false;
 
 let chatHistory = [];
 
@@ -312,7 +313,7 @@ function appendMessage(text, sender, isError = false, sources = [], msgId = null
     bubble.appendChild(content);
 
     // Audio Output Play Button
-    if (sender === 'bot' && !isError) {
+    if (TTS_ENABLED && sender === 'bot' && !isError) {
         const speechBtn = document.createElement('button');
         speechBtn.classList.add('speech-btn');
         speechBtn.innerHTML = '🔊';
@@ -596,4 +597,3 @@ async function playBotAudio(textDiv, btnElement) {
         btnElement.dataset.playing = "false";
     }
 }
-
